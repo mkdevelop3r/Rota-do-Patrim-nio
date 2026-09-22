@@ -1,0 +1,908 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Rota do Patrimônio · Diagnóstico e Painel</title>
+<meta name="robots" content="noindex">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🧭</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Figtree:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<style>
+:root{
+  --bg:#EEF3EE; --band:#062A14; --surface:#FFFFFF; --surface-2:#F5F8F4;
+  --ink:#0B2615; --ink-2:#3F5A47; --line:#D3DED4; --gold:#A37B1C; --gold-soft:#F3E3B4;
+  --on-band:#F4F1E4; --band-muted:#A9C2AE; --accent:#0E5A2C; --warn:#A5421F; --ok:#1E7A42;
+  --display:"Anton","Oswald","Arial Narrow",Impact,sans-serif;
+  --body:"Figtree","Segoe UI",system-ui,-apple-system,sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#03180B; --band:#021108; --surface:#0A2A16; --surface-2:#0E331C;
+    --ink:#F1EEE2; --ink-2:#A9C2AE; --line:#1F4A2E; --gold:#E4BE5C; --gold-soft:#3A3212;
+    --on-band:#F4F1E4; --band-muted:#8FAE96; --accent:#6FCF95; --warn:#F08A62; --ok:#6FCF95;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#03180B; --band:#021108; --surface:#0A2A16; --surface-2:#0E331C;
+  --ink:#F1EEE2; --ink-2:#A9C2AE; --line:#1F4A2E; --gold:#E4BE5C; --gold-soft:#3A3212;
+  --on-band:#F4F1E4; --band-muted:#8FAE96; --accent:#6FCF95; --warn:#F08A62; --ok:#6FCF95;
+}
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*,*::before,*::after{box-sizing:inherit}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.5;-webkit-font-smoothing:antialiased}
+img,svg,canvas{max-width:100%}
+button{font:inherit;color:inherit;cursor:pointer}
+input,textarea,select{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+
+/* ---------- Topo ---------- */
+.top{background:var(--band);color:var(--on-band);position:relative;overflow:hidden}
+.top::after{content:"";position:absolute;right:-120px;top:-60px;width:420px;height:420px;border:56px solid rgba(228,190,92,.07);border-radius:120px;transform:rotate(45deg);pointer-events:none}
+.top-inner{max-width:1180px;margin:0 auto;padding:22px 20px 0;position:relative;z-index:1}
+.brand{display:flex;align-items:center;gap:14px}
+.brand small{display:block;letter-spacing:.32em;font-size:11px;color:var(--band-muted)}
+.wordmark{font-family:var(--display);font-size:clamp(26px,4vw,38px);line-height:1;letter-spacing:.01em;text-transform:uppercase;background:linear-gradient(180deg,#F6DC8C,#C9A13B);-webkit-background-clip:text;background-clip:text;color:transparent}
+.rota-line{display:flex;flex-wrap:wrap;gap:6px 22px;margin:14px 0 0;font-size:13px;color:var(--band-muted)}
+.rota-line b{color:#E4BE5C;font-weight:700}
+.tabs{display:flex;gap:4px;margin-top:20px;overflow-x:auto}
+.tab{background:transparent;border:0;border-bottom:3px solid transparent;color:var(--band-muted);padding:10px 14px 12px;font-weight:600;white-space:nowrap}
+.tab[aria-selected="true"]{color:var(--on-band);border-bottom-color:#E4BE5C}
+.status{position:absolute;right:20px;top:24px;font-size:12px;color:var(--band-muted);text-align:right;max-width:40%}
+
+main{max-width:1180px;margin:0 auto;padding:24px 20px 80px}
+.view[hidden]{display:none}
+h2.display,h3.display{font-family:var(--display);text-transform:uppercase;font-weight:400;letter-spacing:.01em;margin:0}
+h2.display{font-size:clamp(28px,4vw,40px);line-height:1.05}
+h3.display{font-size:22px;line-height:1.1}
+.lead{color:var(--ink-2);max-width:68ch;margin:8px 0 0}
+.muted{color:var(--ink-2)}
+.btn{border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:10px 16px;font-weight:600}
+.btn.primary{background:linear-gradient(180deg,#E8C662,#C69C33);border-color:#B8912F;color:#1D1605}
+.btn.ghost{background:transparent}
+.btn.danger{color:var(--warn)}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.notice{background:var(--gold-soft);border-radius:12px;padding:12px 16px;font-size:14px;margin:0 0 18px}
+
+/* ---------- Login ---------- */
+.gate{min-height:100vh;min-height:100dvh;background:var(--band);color:var(--on-band);display:grid;place-items:center;padding:24px}
+.gate-box{width:100%;max-width:420px}
+.gate h1{font-family:var(--display);font-weight:400;text-transform:uppercase;font-size:44px;line-height:1;margin:18px 0 8px;background:linear-gradient(180deg,#F6DC8C,#C9A13B);-webkit-background-clip:text;background-clip:text;color:transparent}
+.gate p{color:var(--band-muted);margin:0 0 20px}
+.gate label{font-size:13px;color:var(--band-muted)}
+.gate input{width:100%;margin:6px 0 14px;padding:12px 14px;border-radius:10px;border:1px solid #1F4A2E;background:#0A2A16;color:#F4F1E4}
+.gate .btn{width:100%}
+.gate .msg{margin-top:14px;font-size:14px;color:#E4BE5C}
+.userbar{display:flex;gap:10px;align-items:center;justify-content:flex-end;font-size:12px}
+.userbar button{background:none;border:1px solid rgba(169,194,174,.4);border-radius:8px;color:var(--band-muted);padding:4px 10px;font-size:12px}
+.team-form{display:grid;grid-template-columns:2fr 1.5fr 1fr auto;gap:8px;align-items:end;margin:16px 0}
+.team-form input,.team-form select{width:100%;background:var(--surface-2);border:1px solid var(--line);border-radius:10px;padding:9px 10px}
+.team-form label{font-size:12px;color:var(--ink-2);display:block;margin-bottom:4px}
+@media (max-width:700px){.team-form{grid-template-columns:1fr}}
+
+/* ---------- Diagnóstico ---------- */
+.diag{display:grid;grid-template-columns:250px 1fr;gap:28px;align-items:start}
+.rail{position:sticky;top:12px;background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:16px}
+.rail-group{display:grid;grid-template-columns:40px 1fr;gap:8px;padding:10px 0;border-top:1px solid var(--line)}
+.rail-group:first-of-type{border-top:0;padding-top:0}
+.rail-letter{font-family:var(--display);font-size:34px;line-height:1;color:var(--gold)}
+.rail-letter small{display:block;font-family:var(--body);font-size:10px;color:var(--ink-2);letter-spacing:.02em;margin-top:4px}
+.rail-item{display:flex;justify-content:space-between;gap:8px;width:100%;text-align:left;background:none;border:0;padding:5px 8px;border-radius:8px;font-size:14px;color:var(--ink-2)}
+.rail-item[aria-current="true"]{background:var(--surface-2);color:var(--ink);font-weight:700}
+.rail-item .count{font-variant-numeric:tabular-nums;font-size:12px}
+.rail-item .count.done{color:var(--ok);font-weight:700}
+.picker{display:grid;gap:6px;margin-bottom:14px}
+.picker label{font-size:12px;color:var(--ink-2)}
+select{background:var(--surface-2);border:1px solid var(--line);border-radius:10px;padding:9px 10px;width:100%}
+
+.block{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:clamp(18px,3vw,32px)}
+.block-head{display:flex;gap:16px;align-items:flex-start;margin-bottom:22px}
+.block-letter{font-family:var(--display);font-size:64px;line-height:.85;color:var(--gold)}
+.trainer{border-left:3px solid var(--gold);background:var(--surface-2);padding:10px 14px;border-radius:0 10px 10px 0;font-size:14px;color:var(--ink-2);margin:12px 0 0;max-width:70ch}
+.sub{font-family:var(--display);text-transform:uppercase;font-size:18px;margin:28px 0 4px;color:var(--accent)}
+.field{padding:16px 0;border-top:1px solid var(--line)}
+.field:first-child{border-top:0}
+.q{font-weight:600;margin:0 0 10px;max-width:70ch}
+.q .hint{display:block;font-weight:400;font-size:13px;color:var(--ink-2);margin-top:2px}
+.q.key::before{content:"★ ";color:var(--gold)}
+input[type=text],textarea,.money input{width:100%;background:var(--surface-2);border:1px solid var(--line);border-radius:10px;padding:10px 12px}
+textarea{min-height:84px;resize:vertical}
+.money{display:flex;align-items:center;background:var(--surface-2);border:1px solid var(--line);border-radius:10px;max-width:280px}
+.money span{padding:0 0 0 12px;color:var(--ink-2);font-weight:600}
+.money input{border:0;background:transparent}
+.grid-money{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:12px 16px}
+.grid-money label{display:block;font-size:13px;color:var(--ink-2);margin-bottom:4px}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{border:1px solid var(--line);background:var(--surface-2);border-radius:999px;padding:7px 14px;font-size:14px}
+.chip[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--surface)}
+.scale{display:grid;grid-template-columns:repeat(11,minmax(34px,1fr));gap:6px;max-width:560px}
+.scale .chip{border-radius:10px;padding:8px 0;text-align:center;font-variant-numeric:tabular-nums}
+.freq{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;max-width:620px}
+.freq .chip{border-radius:10px;padding:8px 4px;font-size:13px}
+.computed{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin-top:14px}
+.computed div{background:var(--gold-soft);border-radius:12px;padding:10px 14px}
+.computed small{display:block;font-size:12px;color:var(--ink-2)}
+.computed strong{font-size:20px;font-variant-numeric:tabular-nums}
+.rep{display:grid;gap:10px}
+.rep-row{display:grid;grid-template-columns:1.3fr 1fr 1fr .8fr .8fr 1.1fr auto;gap:8px;align-items:end;background:var(--surface-2);border-radius:12px;padding:10px}
+.rep-row label{font-size:11px;color:var(--ink-2);display:block;margin-bottom:3px}
+.rep-row input{width:100%;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:7px 8px}
+.goal-row{display:grid;grid-template-columns:2fr 1fr 1fr;gap:8px;margin-bottom:8px}
+.goal-row input{width:100%;background:var(--surface-2);border:1px solid var(--line);border-radius:10px;padding:9px 10px}
+.goal-head{display:grid;grid-template-columns:2fr 1fr 1fr;gap:8px;font-size:12px;color:var(--ink-2);margin-bottom:4px}
+.block-foot{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-top:26px;padding-top:18px;border-top:1px solid var(--line)}
+
+/* ---------- Painel ---------- */
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin:20px 0 28px}
+.kpi{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px 16px}
+.kpi small{display:block;color:var(--ink-2);font-size:13px}
+.kpi strong{font-family:var(--display);font-size:32px;font-weight:400;line-height:1.1;font-variant-numeric:tabular-nums}
+.prio{display:grid;gap:10px;margin:14px 0 34px;padding:0;list-style:none;counter-reset:p}
+.prio li{counter-increment:p;display:grid;grid-template-columns:62px 1fr auto;gap:16px;align-items:center;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px 18px}
+.prio li::before{content:counter(p);font-family:var(--display);font-size:40px;line-height:1;color:var(--gold);text-align:center}
+.prio h4{margin:0;font-size:16px}
+.prio p{margin:3px 0 0;font-size:14px;color:var(--ink-2)}
+.prio .pct{font-family:var(--display);font-size:28px;font-variant-numeric:tabular-nums;text-align:right}
+.prio .pct small{display:block;font-family:var(--body);font-size:11px;color:var(--ink-2)}
+.pilar{display:inline-block;font-size:12px;font-weight:600;color:var(--accent);background:var(--surface-2);border-radius:6px;padding:2px 8px;margin-top:6px}
+.charts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:18px}
+.card h4{margin:0;font-size:16px}
+.card .read{margin:4px 0 12px;font-size:14px;color:var(--ink-2)}
+.card .cv{position:relative;height:260px}
+.card.wide{grid-column:1/-1}
+.tablewrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th,td{text-align:left;padding:10px 8px;border-bottom:1px solid var(--line);white-space:nowrap}
+th{font-weight:600;color:var(--ink-2);font-size:12px}
+td.num{font-variant-numeric:tabular-nums}
+.fase{display:inline-block;border-radius:6px;padding:2px 8px;font-size:12px;font-weight:700}
+.fase.Reorganizar{background:rgba(165,66,31,.14);color:var(--warn)}
+.fase.Proteger{background:var(--gold-soft);color:var(--gold)}
+.fase.Multiplicar{background:rgba(30,122,66,.14);color:var(--ok)}
+.ai{margin-top:34px}
+.ai-out{display:grid;gap:10px;margin-top:14px}
+.theme{background:var(--surface);border:1px solid var(--line);border-left:4px solid var(--gold);border-radius:12px;padding:12px 16px}
+.theme h5{margin:0;font-size:15px}
+.theme p{margin:4px 0 0;font-size:14px;color:var(--ink-2)}
+.empty{background:var(--surface);border:1px dashed var(--line);border-radius:18px;padding:40px 24px;text-align:center}
+.empty p{max-width:52ch;margin:10px auto 18px;color:var(--ink-2)}
+
+/* ---------- Dossiê ---------- */
+.dossie-top{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;align-items:end;margin-bottom:22px}
+.dossie-top select{max-width:320px}
+.quote{font-family:var(--display);text-transform:uppercase;font-size:clamp(22px,3vw,30px);line-height:1.1;margin:0;max-width:26ch}
+.quote span{color:var(--gold)}
+.route{display:grid;grid-template-columns:1fr 90px 1fr;gap:0;align-items:stretch;margin:22px 0 28px}
+.point{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:20px}
+.point h3{margin:0 0 12px}
+.point dl{display:grid;grid-template-columns:1fr auto;gap:8px 12px;margin:0;font-size:14px}
+.point dt{color:var(--ink-2)}
+.point dd{margin:0;font-weight:700;font-variant-numeric:tabular-nums;text-align:right}
+.bridge{display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;font-size:12px;color:var(--ink-2)}
+.bridge svg{width:70px;height:120px}
+.bridge strong{font-family:var(--display);font-size:20px;font-weight:400;color:var(--gold);display:block}
+.needs{display:grid;gap:10px;margin:12px 0 28px;padding:0;list-style:none}
+.needs li{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 16px;display:grid;grid-template-columns:10px 1fr;gap:14px}
+.needs li::before{content:"";border-radius:4px;background:var(--gold)}
+.needs li.alta::before{background:var(--warn)}
+.needs b{display:block}
+.needs span{font-size:14px;color:var(--ink-2)}
+.voice{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:12px}
+.voice div{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px 16px}
+.voice small{display:block;color:var(--ink-2);font-size:12px;margin-bottom:4px}
+.voice p{margin:0;font-size:15px}
+
+@media (max-width:860px){
+  .diag{grid-template-columns:1fr}
+  .rail{position:static}
+  .charts,.voice{grid-template-columns:1fr}
+  .route{grid-template-columns:1fr}
+  .bridge{padding:10px 0}
+  .bridge svg{transform:rotate(90deg);height:70px}
+  .rep-row{grid-template-columns:1fr 1fr}
+  .status{position:static;max-width:none;text-align:left;margin-top:10px}
+  .prio li{grid-template-columns:44px 1fr}
+  .prio .pct{grid-column:2;text-align:left}
+}
+@media (prefers-reduced-motion:no-preference){
+  .view{animation:in .35s ease-out}
+  @keyframes in{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+}
+</style>
+</head>
+<body>
+<div class="gate" id="gate" hidden>
+  <div class="gate-box">
+    <svg width="54" height="54" viewBox="0 0 46 46" aria-hidden="true"><defs><linearGradient id="g2" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#F6DC8C"/><stop offset="1" stop-color="#C69C33"/></linearGradient></defs><rect x="4" y="26" width="6" height="14" rx="1.5" fill="url(#g2)"/><rect x="13" y="19" width="6" height="21" rx="1.5" fill="url(#g2)"/><rect x="22" y="12" width="6" height="28" rx="1.5" fill="url(#g2)"/><path d="M31 40 C31 24 36 12 44 6" stroke="url(#g2)" stroke-width="5" fill="none" stroke-linecap="round"/></svg>
+    <h1>Rota do Patrimônio</h1>
+    <p>Área da equipe. Entre com o e-mail cadastrado pela coordenação e você recebe um link de acesso.</p>
+    <form id="loginForm"><label for="email">E-mail</label><input id="email" type="email" autocomplete="email" required>
+    <button class="btn primary" type="submit" id="loginBtn">Receber link de acesso</button></form>
+    <div class="msg" id="gateMsg" role="status"></div>
+  </div>
+</div>
+<div id="app" hidden>
+<header class="top">
+  <div class="top-inner">
+    <div class="brand">
+      <svg width="46" height="46" viewBox="0 0 46 46" aria-hidden="true"><defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#F6DC8C"/><stop offset="1" stop-color="#C69C33"/></linearGradient></defs><rect x="4" y="26" width="6" height="14" rx="1.5" fill="url(#g)"/><rect x="13" y="19" width="6" height="21" rx="1.5" fill="url(#g)"/><rect x="22" y="12" width="6" height="28" rx="1.5" fill="url(#g)"/><path d="M31 40 C31 24 36 12 44 6" stroke="url(#g)" stroke-width="5" fill="none" stroke-linecap="round"/></svg>
+      <div><small>PROGRAMA</small><div class="wordmark">Rota do Patrimônio</div></div>
+    </div>
+    <p class="rota-line"><span><b>R</b> Realidade</span><span><b>O</b> Objetivos</span><span><b>T</b> Transformação</span><span><b>A</b> Ação</span></p>
+    <div class="status"><div id="status">Conectando…</div><div class="userbar"><span id="who"></span><button id="logout" type="button">Sair</button></div></div>
+    <div class="tabs" role="tablist">
+      <button class="tab" role="tab" data-view="painel" aria-selected="true">Painel da turma</button>
+      <button class="tab" role="tab" data-view="dossie" aria-selected="false">Dossiê do mentorado</button>
+      <button class="tab" role="tab" data-view="diag" aria-selected="false">Aplicar diagnóstico</button>
+      <button class="tab" role="tab" data-view="equipe" aria-selected="false" id="tabEquipe" hidden>Equipe</button>
+    </div>
+  </div>
+</header>
+
+<main>
+  <section class="view" id="view-painel"></section>
+  <section class="view" id="view-dossie" hidden></section>
+  <section class="view" id="view-diag" hidden></section>
+  <section class="view" id="view-equipe" hidden></section>
+</main>
+</div>
+
+<script>
+/* =========================================================
+   Esquema do questionário (onboarding em 8 blocos)
+   ========================================================= */
+const FREQ = ["Nunca","Raramente","Às vezes","Frequente","Sempre"];
+const BLOCKS = [
+ {id:"b1",letter:"R",title:"Momento atual",trainer:"Abra com perguntas curtas. Anote a frase do mentorado exatamente como ele disser.",fields:[
+  {id:"frase",type:"text",q:"Como você definiria sua atual vida financeira em uma frase?"},
+  {id:"preocupacao",type:"single",q:"Qual é hoje sua maior preocupação financeira?",opts:["Dívidas","Não sobra dinheiro","Falta de controle","Não sei investir","Renda instável","Aposentadoria e futuro","Proteger a família","Outra"]},
+  {id:"preocupacao_det",type:"textarea",q:"Detalhe da preocupação",hint:"Nas palavras do mentorado."},
+  {id:"motivo",type:"textarea",q:"O que fez você decidir entrar nesta mentoria?"},
+  {id:"valeu",type:"textarea",q:"O que você espera ter construído ao final para dizer que valeu a pena?"},
+  {id:"satisfacao",type:"scale",q:"De 0 a 10, qual sua satisfação com sua situação financeira atual?"},
+  {id:"para10",type:"textarea",q:"O que precisaria acontecer para essa nota chegar a 10?"},
+  {id:"tres_anos",type:"textarea",q:"Se nada mudar nos próximos 3 anos, o que mais lhe preocupa?"}
+ ]},
+ {id:"b2",letter:"R",title:"Raio-X financeiro",trainer:"Aqui são números, não percepções. Se o mentorado não souber, peça a melhor estimativa e marque para revisar.",fields:[
+  {sub:"Renda"},
+  {id:"renda",type:"money",q:"Renda média mensal líquida atual"},
+  {id:"renda_tipo",type:"single",q:"Sua renda é",opts:["Fixa","Variável","Combinação das duas"]},
+  {id:"fontes",type:"multi",q:"Quais são suas fontes de renda?",opts:["Salário","Pró-labore / empresa","Serviços autônomos","Aluguéis","Investimentos","Outras"]},
+  {id:"rendas",type:"grid",q:"Histórico de renda",items:[["renda_3m","Média dos últimos 3 meses"],["renda_melhor","Melhor mês (12 meses)"],["renda_pior","Pior mês (12 meses)"]]},
+  {sub:"Despesas"},
+  {id:"custo_vida",type:"money",q:"Custo de vida mensal total"},
+  {id:"gastos",type:"grid",q:"Quanto gasta por mês, aproximadamente, com",items:[["g_moradia","Moradia"],["g_alimentacao","Alimentação"],["g_educacao","Educação"],["g_saude","Saúde"],["g_transporte","Transporte"],["g_lazer","Lazer"],["g_viagens","Viagens"],["g_familia","Família"],["g_outros","Outros"]]},
+  {id:"aporte",type:"money",q:"Quanto consegue guardar ou investir por mês atualmente?"},
+  {sub:"Patrimônio"},
+  {id:"ativos",type:"grid",q:"Quanto possui hoje em",items:[["at_caixa","Dinheiro disponível"],["at_invest","Investimentos"],["at_imoveis","Imóveis"],["at_empresas","Empresas"],["at_veiculos","Veículos"],["at_outros","Outros ativos"]]},
+  {id:"dividas_total",type:"money",q:"Valor aproximado de todas as dívidas"},
+  {id:"calc",type:"computed"}
+ ]},
+ {id:"b3",letter:"R",title:"Dívidas e compromissos",trainer:"Esse bloco revela rápido quem precisa de reorganização antes de investimento.",fields:[
+  {id:"tem_divida",type:"single",q:"Você possui alguma dívida atualmente?",opts:["Sim","Não"]},
+  {id:"dividas",type:"debts",q:"Para cada dívida",show:a=>a.tem_divida==="Sim"},
+  {id:"divida_preocupa",type:"textarea",q:"Existe alguma dívida causando preocupação ou comprometendo o fluxo de caixa? Qual?",show:a=>a.tem_divida==="Sim"},
+  {id:"credito_mes",type:"single",q:"Usa cheque especial, rotativo do cartão ou empréstimo para fechar o mês?",opts:["Nunca","Às vezes","Todo mês"]},
+  {id:"divida_p_divida",type:"single",q:"Já precisou contrair uma dívida para pagar outra?",opts:["Sim","Não"]}
+ ]},
+ {id:"b4",letter:"R",title:"Investimentos",trainer:"Pergunta-chave: “Se eu olhar todos os seus investimentos hoje, você consegue me explicar a função de cada um?”",fields:[
+  {id:"onde",type:"multi",q:"Onde está o dinheiro investido?",opts:["Poupança","Renda fixa","Fundos","Ações","FIIs","Previdência","Imóveis","Cripto","Outros","Não invisto"]},
+  {id:"quem_decide",type:"single",q:"Quem toma suas decisões de investimento?",opts:["Eu mesmo","Gerente do banco","Assessor / consultor","Cônjuge / família","Ninguém, fica parado"]},
+  {id:"entende",type:"single",q:"Você entende por que possui cada investimento?",opts:["Sim","Em parte","Não"]},
+  {id:"explica",type:"single",key:true,q:"Consegue explicar a função de cada investimento?",opts:["Sim","Em parte","Não"]},
+  {id:"objetivo_inv",type:"single",q:"Objetivo principal ao investir",opts:["Reserva de emergência","Aposentadoria","Renda passiva","Comprar imóvel","Educação dos filhos","Fazer o dinheiro crescer","Não tenho claro"]},
+  {id:"horizonte",type:"single",q:"Horizonte de investimento",opts:["Até 1 ano","1 a 3 anos","3 a 5 anos","Mais de 5 anos"]},
+  {id:"perdeu",type:"single",q:"Já perdeu dinheiro investindo?",opts:["Sim","Não"]},
+  {id:"perdeu_det",type:"textarea",q:"O que aconteceu?",show:a=>a.perdeu==="Sim"},
+  {id:"parado",type:"single",q:"Existe dinheiro parado hoje que você não sabe onde colocar?",opts:["Sim","Não"]}
+ ]},
+ {id:"b5",letter:"T",title:"Geração de renda",trainer:"Patrimônio não nasce só da economia: nasce da capacidade de gerar excedente.",fields:[
+  {id:"atuacao",type:"single",q:"Você trabalha como",opts:["Empregado","Empresário","Profissional liberal","Investidor","Outro"]},
+  {id:"renda_tendencia",type:"single",q:"Sua renda nos últimos 3 anos",opts:["Aumentou","Ficou estável","Diminuiu"]},
+  {id:"potencial",type:"single",q:"Potencial de aumentar a renda nos próximos 12 meses",opts:["Baixo","Médio","Alto"]},
+  {id:"impede",type:"multi",q:"O que hoje impede você de ganhar mais?",opts:["Falta de tempo","Poucos clientes / vendas","Preço baixo","Falta de qualificação","Medo / insegurança","Falta de estratégia","Mercado ruim","Outro"]},
+  {id:"habilidade",type:"single",q:"Tem alguma habilidade que poderia gerar nova fonte de renda?",opts:["Sim","Não"]},
+  {id:"habilidade_det",type:"text",q:"Qual?",show:a=>a.habilidade==="Sim"},
+  {id:"mais30",type:"textarea",q:"Se precisasse aumentar sua renda em 30% nos próximos 12 meses, o que faria?"}
+ ]},
+ {id:"b6",letter:"O",title:"Visão e patrimônio desejado",trainer:"Pergunta que conecta dinheiro com propósito: “Quanto dinheiro você precisa construir para financiar a vida que deseja viver?”",fields:[
+  {id:"visao5",type:"textarea",q:"Como você quer estar financeiramente daqui a 5 anos?"},
+  {id:"metas",type:"grid",q:"Metas em números",items:[["pat_desejado","Patrimônio que quer ter construído"],["renda_passiva","Renda mensal sem depender do trabalho"],["quanto_vida","Quanto precisa para financiar a vida desejada"]]},
+  {id:"proporcionar",type:"textarea",q:"O que gostaria que seu dinheiro proporcionasse para você e sua família?"},
+  {id:"objetivos",type:"goals",q:"Seus três maiores objetivos financeiros"},
+  {id:"prioridade",type:"single",q:"Qual desses é prioridade absoluta?",opts:["Objetivo 1","Objetivo 2","Objetivo 3"]},
+  {id:"porque",type:"textarea",q:"Por que isso é importante para você?"}
+ ]},
+ {id:"b7",letter:"T",title:"Comportamento financeiro",trainer:"Aqui você sai dos números e entra na causa.",fields:[
+  {id:"planeja",type:"freq",q:"Planeja os gastos antes de receber?"},
+  {id:"acompanha",type:"freq",q:"Acompanha seus gastos?"},
+  {id:"sabe_custo",type:"freq",q:"Sabe exatamente quanto custa manter seu padrão de vida?"},
+  {id:"impulso",type:"freq",q:"Compra por impulso?"},
+  {id:"adia",type:"freq",q:"Adia decisões financeiras importantes?"},
+  {id:"extra",type:"single",q:"Quando recebe dinheiro extra, normalmente",opts:["Gasto","Pago dívidas","Guardo","Invisto","Depende"]},
+  {id:"mudar",type:"multi",q:"Qual comportamento sabe que precisa mudar?",opts:["Gastar por impulso","Não controlar gastos","Não poupar","Adiar decisões","Usar crédito","Não investir","Vender / cobrar pouco"]},
+  {id:"habito",type:"text",q:"Qual hábito financeiro gostaria de desenvolver?"},
+  {id:"tentou",type:"multi",q:"O que já tentou para se organizar e não manteve?",opts:["Planilha","Aplicativo","Caderno / papel","Assessor / gerente","Curso / livro","Nunca tentei"]},
+  {id:"barreira",type:"multi",key:true,q:"O que está impedindo você de construir o patrimônio que sabe que poderia ter?",hint:"Marque os temas que aparecerem e registre a fala abaixo.",opts:["Falta de conhecimento","Falta de disciplina","Medo de arriscar","Renda insuficiente","Falta de tempo","Crenças sobre dinheiro","Família / cônjuge","Dívidas"]},
+  {id:"barreira_det",type:"textarea",q:"Nas palavras do mentorado"}
+ ]},
+ {id:"b8",letter:"A",title:"A pergunta final",trainer:"Obrigatória e aberta. Termine a sessão aqui.",fields:[
+  {id:"sucesso",type:"textarea",key:true,q:"Se esta mentoria for absolutamente bem-sucedida para você, o que terá mudado na sua vida financeira ao final dela?"},
+  {id:"espera",type:"textarea",q:"O que você espera desta mentoria para que isso aconteça?"}
+ ]}
+];
+const LETTERS = [["R","Realidade",["b1","b2","b3","b4"]],["O","Objetivos",["b6"]],["T","Transformação",["b5","b7"]],["A","Ação",["b8"]]];
+const ORDER = ["b1","b2","b3","b4","b6","b5","b7","b8"];
+const blockById = id => BLOCKS.find(b=>b.id===id);
+
+/* =========================================================
+   Utilitários
+   ========================================================= */
+const $ = s => document.querySelector(s);
+const esc = s => String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const num = v => (typeof v==="number" && isFinite(v)) ? v : 0;
+const has = v => typeof v==="number" && isFinite(v);
+function parseMoney(s){
+  s=String(s||"").replace(/[^\d,.\-]/g,""); if(!s) return null;
+  if(s.includes(",")) s=s.replace(/\./g,"").replace(",",".");
+  else if((s.match(/\./g)||[]).length>1 || /\.\d{3}$/.test(s)) s=s.replace(/\./g,"");
+  const n=Number(s); return isFinite(n)?n:null;
+}
+const brl = n => has(n) ? n.toLocaleString("pt-BR",{style:"currency",currency:"BRL",maximumFractionDigits:0}) : "—";
+const brlC = n => has(n) ? (Math.abs(n)>=100000 ? n.toLocaleString("pt-BR",{style:"currency",currency:"BRL",notation:"compact",maximumFractionDigits:1}) : brl(n)) : "—";
+const pct = n => has(n) ? Math.round(n*100)+"%" : "—";
+const moneyInputVal = n => has(n) ? n.toLocaleString("pt-BR",{maximumFractionDigits:2}) : "";
+const cssVar = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+
+/* =========================================================
+   Cálculos e diagnóstico por mentorado
+   ========================================================= */
+function calc(a){
+  const c={};
+  c.ativos = ["at_caixa","at_invest","at_imoveis","at_empresas","at_veiculos","at_outros"].reduce((s,k)=>s+num(a[k]),0);
+  const somaDiv = (a.dividas||[]).reduce((s,d)=>s+num(d.saldo),0);
+  c.dividas = has(a.dividas_total) ? a.dividas_total : somaDiv;
+  c.parcelas = (a.dividas||[]).reduce((s,d)=>s+num(d.parcela),0);
+  c.pl = c.ativos - c.dividas;
+  const renda = has(a.renda) ? a.renda : (has(a.renda_3m)?a.renda_3m:null);
+  c.renda = renda;
+  const gastosSoma = ["g_moradia","g_alimentacao","g_educacao","g_saude","g_transporte","g_lazer","g_viagens","g_familia","g_outros"].reduce((s,k)=>s+num(a[k]),0);
+  c.custo = has(a.custo_vida) ? a.custo_vida : (gastosSoma||null);
+  c.poup = (renda && has(a.aporte)) ? a.aporte/renda : null;
+  c.comp = (renda && has(c.custo)) ? c.custo/renda : null;
+  c.reserva = (has(c.custo) && c.custo>0 && has(a.at_caixa)) ? a.at_caixa/c.custo : null;
+  c.parcRenda = renda && c.parcelas ? c.parcelas/renda : null;
+  c.volat = (has(a.renda_melhor)&&has(a.renda_pior)&&renda) ? (a.renda_melhor-a.renda_pior)/renda : null;
+  const f = k => { const i=FREQ.indexOf(a[k]); return i<0?null:i+1; };
+  c.beh = {Planejamento:f("planeja"),Controle:f("acompanha"),"Conhece o custo":f("sabe_custo"),"Evita impulso":f("impulso")?6-f("impulso"):null,"Decide sem adiar":f("adia")?6-f("adia"):null};
+  const bv = Object.values(c.beh).filter(v=>v!=null);
+  c.behScore = bv.length ? Math.round((bv.reduce((s,v)=>s+v,0)/bv.length-1)/4*100) : null;
+  c.gap = has(a.pat_desejado) ? a.pat_desejado - c.pl : null;
+  c.aporteNec = (c.gap!=null && c.gap>0) ? c.gap/60 : null;
+  const usaCredito = a.credito_mes==="Às vezes"||a.credito_mes==="Todo mês";
+  const fluxoNeg = renda && has(c.custo) && c.custo>=renda;
+  if(usaCredito || a.divida_p_divida==="Sim" || (c.parcRenda!=null&&c.parcRenda>0.3) || fluxoNeg) c.fase="Reorganizar";
+  else if(c.reserva==null || c.reserva<6) c.fase="Proteger";
+  else c.fase="Multiplicar";
+  c.usaCredito=usaCredito;
+  return c;
+}
+
+function needs(a,c){
+  const n=[];
+  const add=(alta,titulo,texto,pilar)=>n.push({alta,titulo,texto,pilar});
+  if(c.fase==="Reorganizar"){
+    const motivos=[];
+    if(c.usaCredito) motivos.push("usa crédito para fechar o mês ("+a.credito_mes.toLowerCase()+")");
+    if(a.divida_p_divida==="Sim") motivos.push("já fez dívida para pagar dívida");
+    if(c.parcRenda>0.3) motivos.push("parcelas comprometem "+pct(c.parcRenda)+" da renda");
+    if(c.renda && c.custo>=c.renda) motivos.push("custo de vida igual ou maior que a renda");
+    add(true,"Reorganizar antes de investir",motivos.join("; ")+".","Planejamento");
+  }
+  if(c.reserva!=null && c.reserva<6) add(c.reserva<2,"Construir reserva de emergência","O dinheiro disponível cobre "+c.reserva.toFixed(1).replace(".",",")+" meses do custo de vida.","Mapa da prosperidade financeira");
+  if(c.poup!=null && c.poup<0.1) add(c.poup<=0,"Aumentar a taxa de aporte","Hoje guarda "+pct(c.poup)+" da renda ("+brl(a.aporte)+" por mês).","Planejamento");
+  if(c.aporteNec!=null && has(a.aporte) && c.aporteNec>a.aporte) add(false,"O ritmo atual não chega ao patrimônio desejado","Para ir de "+brlC(c.pl)+" a "+brlC(a.pat_desejado)+" em 5 anos precisaria de "+brl(c.aporteNec)+"/mês sem contar rendimentos; aporta "+brl(a.aporte)+".","Visão de 5 anos para 1 ano");
+  if(a.explica==="Não"||a.entende==="Não") add(true,"Entender a própria carteira","Não consegue explicar a função dos investimentos que tem.","Investimentos");
+  else if(a.explica==="Em parte"||a.entende==="Em parte") add(false,"Dar função a cada investimento","Entende a carteira só em parte.","Investimentos");
+  if(a.quem_decide==="Gerente do banco"||a.quem_decide==="Ninguém, fica parado") add(false,"Retomar as decisões de investimento","Quem decide hoje: "+a.quem_decide.toLowerCase()+".","Investimentos");
+  if(a.parado==="Sim") add(false,"Alocar o dinheiro parado","Tem recurso sem destino definido.","Investimentos");
+  const beh=Object.entries(c.beh).filter(([,v])=>v!=null&&v<=2).map(([k])=>k.toLowerCase());
+  if(beh.length) add(beh.length>=3,"Hábitos e comportamento","Pontos fracos: "+beh.join(", ")+".","Hábitos e comportamentos de riqueza");
+  const vend=(a.impede||[]).filter(x=>["Poucos clientes / vendas","Preço baixo","Falta de estratégia"].includes(x));
+  if(a.potencial==="Alto"||vend.length) add(false,"Alavancar a renda",(a.potencial?"Potencial de aumento "+a.potencial.toLowerCase()+". ":"")+(vend.length?"Trava: "+vend.join(", ").toLowerCase()+".":""),"Vendas");
+  if(c.volat!=null && c.volat>0.5) add(false,"Planejar pelo pior mês","Renda oscila "+pct(c.volat)+" entre o melhor e o pior mês.","Planejamento");
+  if(a.atuacao==="Empresário") add(false,"Separar pessoa física e empresa","Empresário: rever estrutura, pró-labore e tributação.","Estratégias de crescimento");
+  const temObj=(a.objetivos||[]).some(o=>o&&o.oque);
+  if(!temObj||!a.prioridade) add(false,"Definir o estado desejado","Objetivos com o quê, quanto e quando ainda não estão claros.","Definição de estado desejado");
+  n.sort((x,y)=>y.alta-x.alta);
+  return n;
+}
+
+/* =========================================================
+   Estado e armazenamento
+   ========================================================= */
+const SUPABASE_URL="https://zvqrrmwfgsbsctdblczd.supabase.co";
+const SUPABASE_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp2cXJybXdmZ3Nic2N0ZGJsY3pkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAwOTMwMjQsImV4cCI6MjEwNTY2OTAyNH0.D6LQnonlz24buj5ZaFp4XD6pLuXvkspyD_kMmDP9wKQ";
+const sb = window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+let records=[], demo=false, dbReady=false, isAdmin=false, me=null, channel=null, equipe=[];
+let current={id:null,answers:{}}, curBlock="b1", dossieId=null, charts={};
+function setStatus(t){ $("#status").textContent=t; }
+function newId(){ return crypto.randomUUID(); }
+function allRecords(){ return demo ? demoData() : records; }
+
+async function loadRecords(){
+  const {data,error}=await sb.from("mentorados").select("id,nome,treinador,answers,atualizado_em").order("atualizado_em",{ascending:false});
+  if(error){ setStatus("Não foi possível ler os diagnósticos."); return; }
+  records=data.map(r=>({id:r.id,nome:r.nome,treinador:r.treinador,answers:r.answers||{},updatedAt:Date.parse(r.atualizado_em)}));
+  if(view!=="diag") render(); else renderRail();
+}
+async function boot(session){
+  if(!session){ $("#app").hidden=true; $("#gate").hidden=false; return; }
+  me=session.user;
+  const [{data:ok},{data:adm}]=await Promise.all([sb.rpc("is_equipe"),sb.rpc("is_admin")]);
+  if(!ok){
+    $("#app").hidden=true; $("#gate").hidden=false;
+    $("#gateMsg").innerHTML=`O e-mail <b>${esc(me.email)}</b> ainda não foi liberado. Peça à coordenação para incluir você na equipe. <button class="btn ghost" style="width:auto;margin-top:10px;color:inherit" id="sair2">Usar outro e-mail</button>`;
+    $("#sair2").onclick=()=>sb.auth.signOut();
+    return;
+  }
+  isAdmin=!!adm; dbReady=true;
+  $("#gate").hidden=true; $("#app").hidden=false;
+  $("#who").textContent=me.email; $("#tabEquipe").hidden=!isAdmin;
+  setStatus("Conectado. Respostas salvas para a equipe.");
+  await loadRecords();
+  if(!channel) channel=sb.channel("mentorados").on("postgres_changes",{event:"*",schema:"public",table:"mentorados"},()=>loadRecords()).subscribe();
+}
+let booted=false;
+sb.auth.onAuthStateChange((ev,session)=>{
+  if(ev==="SIGNED_OUT"){ booted=false; if(channel){sb.removeChannel(channel);channel=null;} records=[]; boot(null); return; }
+  if(session && !booted){ booted=true; setTimeout(()=>boot(session),0); }
+  else if(!session && ev==="INITIAL_SESSION") boot(null);
+});
+$("#loginForm").addEventListener("submit",async e=>{
+  e.preventDefault();
+  const email=$("#email").value.trim().toLowerCase(); if(!email) return;
+  $("#loginBtn").disabled=true; $("#gateMsg").textContent="Enviando…";
+  const {error}=await sb.auth.signInWithOtp({email,options:{emailRedirectTo:location.origin+location.pathname}});
+  $("#loginBtn").disabled=false;
+  $("#gateMsg").textContent = error ? (error.status===429?"Muitos pedidos seguidos. Aguarde alguns minutos e tente de novo.":"Não foi possível enviar o link: "+error.message) : "Link enviado para "+email+". Abra o e-mail neste mesmo aparelho.";
+});
+$("#logout").onclick=()=>sb.auth.signOut();
+
+let saveTimer=null;
+async function save(manual){
+  const a=current.answers;
+  if(!a.nome){ if(manual) setStatus("Preencha o nome do mentorado para salvar."); return; }
+  if(!current.id) current.id=newId();
+  const row={id:current.id,nome:a.nome,treinador:a.treinador||"",answers:JSON.parse(JSON.stringify(a))};
+  const isNew=!records.some(r=>r.id===current.id);
+  if(isNew) row.criado_por=me.id;
+  const {error}=await sb.from("mentorados").upsert(row);
+  if(error) setStatus("Falha ao salvar. Verifique a conexão e tente de novo.");
+  else setStatus("Salvo às "+new Date().toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"})+".");
+}
+function scheduleSave(){ clearTimeout(saveTimer); saveTimer=setTimeout(()=>save(false),1500); }
+
+/* =========================================================
+   Navegação
+   ========================================================= */
+let view="painel";
+document.querySelectorAll(".tab").forEach(t=>t.addEventListener("click",()=>go(t.dataset.view)));
+function go(v){
+  view=v;
+  document.querySelectorAll(".tab").forEach(t=>t.setAttribute("aria-selected",String(t.dataset.view===v)));
+  ["painel","dossie","diag","equipe"].forEach(x=>$("#view-"+x).hidden = x!==v);
+  render();
+  window.scrollTo({top:0});
+}
+function render(){ if(view==="painel") renderPainel(); else if(view==="dossie") renderDossie(); else if(view==="equipe") renderEquipe(); else renderDiag(); }
+
+/* =========================================================
+   DIAGNÓSTICO (formulário do treinador)
+   ========================================================= */
+function answered(b){
+  const a=current.answers; let tot=0,ok=0;
+  b.fields.forEach(f=>{
+    if(f.sub||f.type==="computed") return;
+    if(f.show&&!f.show(a)) return;
+    tot++;
+    let v;
+    if(f.type==="grid") v=f.items.some(([k])=>has(a[k]));
+    else if(f.type==="goals") v=(a.objetivos||[]).some(o=>o&&o.oque);
+    else if(f.type==="debts") v=(a.dividas||[]).length>0;
+    else { v=a[f.id]; v = Array.isArray(v)?v.length>0 : (v!==undefined&&v!==null&&v!==""); }
+    if(v) ok++;
+  });
+  return [ok,tot];
+}
+function renderRail(){
+  const el=$("#rail"); if(!el) return;
+  const opts = allRecords().filter(()=>!demo).map(r=>`<option value="${esc(r.id)}" ${r.id===current.id?"selected":""}>${esc(r.nome||"Sem nome")}</option>`).join("");
+  el.innerHTML = `
+   <div class="picker"><label for="pick">Mentorado</label>
+    <select id="pick"><option value="">+ Novo diagnóstico</option>${opts}</select></div>
+   ${LETTERS.map(([L,name,ids])=>`<div class="rail-group"><div class="rail-letter">${L}<small>${name}</small></div><div>
+     ${ids.map(id=>{const b=blockById(id);const [ok,tot]=answered(b);return `<button class="rail-item" data-go="${id}" aria-current="${id===curBlock}"><span>${b.title}</span><span class="count ${ok===tot&&tot?"done":""}">${ok}/${tot}</span></button>`}).join("")}
+   </div></div>`).join("")}`;
+  $("#pick").onchange=e=>{
+    const id=e.target.value;
+    if(!id){ current={id:null,answers:{data:new Date().toISOString().slice(0,10)}}; }
+    else { const r=records.find(x=>x.id===id); current={id, answers:JSON.parse(JSON.stringify(r.answers||{}))}; }
+    curBlock="b1"; renderDiag();
+  };
+  el.querySelectorAll("[data-go]").forEach(b=>b.onclick=()=>{curBlock=b.dataset.go; renderBlock(); renderRail(); $("#blk").scrollIntoView({block:"start",behavior:"smooth"});});
+}
+function renderDiag(){
+  const v=$("#view-diag");
+  if(demo){ v.innerHTML=`<p class="notice">Você está vendo dados de demonstração. Desligue o modo demonstração no painel para aplicar um diagnóstico real.</p>`; return; }
+  if(!current.answers.data) current.answers.data=new Date().toISOString().slice(0,10);
+  v.innerHTML = `
+   <div style="margin-bottom:22px"><h2 class="display">Diagnóstico de onboarding</h2>
+   <p class="lead">O treinador preenche durante a sessão. Tudo é salvo automaticamente e alimenta o painel da turma e o dossiê do mentorado.</p></div>
+   
+   <div class="diag"><aside class="rail" id="rail"></aside><div id="blk"></div></div>`;
+  renderRail(); renderBlock();
+}
+function fieldHTML(f,a){
+  const k=f.key?" key":""; const hint=f.hint?`<span class="hint">${esc(f.hint)}</span>`:"";
+  const Q=`<p class="q${k}">${esc(f.q)}${hint}</p>`;
+  const chip=(id,o,on,cls="")=>`<button type="button" class="chip ${cls}" data-f="${id}" data-v="${esc(o)}" aria-pressed="${on}">${esc(o)}</button>`;
+  switch(f.type){
+   case "text": return Q+`<input type="text" data-t="${f.id}" value="${esc(a[f.id]||"")}">`;
+   case "textarea": return Q+`<textarea data-t="${f.id}">${esc(a[f.id]||"")}</textarea>`;
+   case "money": return Q+`<div class="money"><span>R$</span><input type="text" inputmode="decimal" data-m="${f.id}" value="${moneyInputVal(a[f.id])}" placeholder="0"></div>`;
+   case "grid": return Q+`<div class="grid-money">${f.items.map(([id,l])=>`<div><label for="m_${id}">${esc(l)}</label><div class="money"><span>R$</span><input id="m_${id}" type="text" inputmode="decimal" data-m="${id}" value="${moneyInputVal(a[id])}" placeholder="0"></div></div>`).join("")}</div>`;
+   case "single": return Q+`<div class="chips">${f.opts.map(o=>chip(f.id,o,a[f.id]===o)).join("")}</div>`;
+   case "multi": return Q+`<div class="chips">${f.opts.map(o=>chip(f.id,o,(a[f.id]||[]).includes(o))).join("")}</div>`;
+   case "scale": return Q+`<div class="scale">${[...Array(11).keys()].map(i=>chip(f.id,String(i),String(a[f.id])===String(i))).join("")}</div>`;
+   case "freq": return Q+`<div class="freq">${FREQ.map(o=>chip(f.id,o,a[f.id]===o)).join("")}</div>`;
+   case "computed": return `<div class="computed" id="computed"></div>`;
+   case "debts": {
+     const L=a.dividas||[];
+     return Q+`<div class="rep">${L.map((d,i)=>`<div class="rep-row">
+       <div><label>Tipo</label><input data-d="${i}" data-k="tipo" value="${esc(d.tipo||"")}" placeholder="Cartão, financiamento…"></div>
+       <div><label>Saldo devedor</label><input data-d="${i}" data-k="saldo" inputmode="decimal" value="${moneyInputVal(d.saldo)}"></div>
+       <div><label>Parcela</label><input data-d="${i}" data-k="parcela" inputmode="decimal" value="${moneyInputVal(d.parcela)}"></div>
+       <div><label>Juros % a.m.</label><input data-d="${i}" data-k="taxa" value="${esc(d.taxa||"")}"></div>
+       <div><label>Prazo (meses)</label><input data-d="${i}" data-k="prazo" value="${esc(d.prazo||"")}"></div>
+       <div><label>Credor</label><input data-d="${i}" data-k="credor" value="${esc(d.credor||"")}"></div>
+       <button type="button" class="btn ghost danger" data-rm="${i}" aria-label="Remover dívida">Remover</button></div>`).join("")}
+       <div><button type="button" class="btn" id="addDebt">Adicionar dívida</button></div></div>`;
+   }
+   case "goals": {
+     const G=a.objetivos||[{},{},{}];
+     return Q+`<div class="goal-head"><span>O quê?</span><span>Quanto?</span><span>Quando?</span></div>`+[0,1,2].map(i=>`<div class="goal-row">
+       <input data-g="${i}" data-k="oque" value="${esc((G[i]||{}).oque||"")}" placeholder="Objetivo ${i+1}" aria-label="Objetivo ${i+1}: o quê">
+       <input data-g="${i}" data-k="quanto" value="${esc((G[i]||{}).quanto||"")}" placeholder="R$" aria-label="Objetivo ${i+1}: quanto">
+       <input data-g="${i}" data-k="quando" value="${esc((G[i]||{}).quando||"")}" placeholder="Prazo" aria-label="Objetivo ${i+1}: quando"></div>`).join("");
+   }
+  }
+  return "";
+}
+function renderBlock(){
+  const b=blockById(curBlock), a=current.answers, el=$("#blk");
+  const idx=ORDER.indexOf(curBlock);
+  const ident = curBlock==="b1" ? `<div class="grid-money" style="margin-bottom:10px">
+     <div><label for="nome">Nome do mentorado</label><input id="nome" type="text" data-t="nome" value="${esc(a.nome||"")}"></div>
+     <div><label for="treinador">Treinador</label><input id="treinador" type="text" data-t="treinador" value="${esc(a.treinador||"")}"></div>
+     <div><label for="data">Data da sessão</label><input id="data" type="text" data-t="data" value="${esc(a.data||"")}"></div></div>` : "";
+  el.innerHTML = `<article class="block">
+    <div class="block-head"><div class="block-letter" aria-hidden="true">${b.letter}</div><div>
+      <h3 class="display">${esc(b.title)}</h3><p class="trainer">${esc(b.trainer)}</p></div></div>
+    ${ident}
+    <div>${b.fields.map(f=>{ if(f.sub) return `<h4 class="sub">${esc(f.sub)}</h4>`; if(f.show&&!f.show(a)) return ""; return `<div class="field">${fieldHTML(f,a)}</div>`; }).join("")}</div>
+    <div class="block-foot">
+      <button class="btn ghost" id="prev" ${idx===0?"disabled":""}>Bloco anterior</button>
+      <div class="row"><button class="btn" id="saveBtn">Salvar agora</button>
+      ${idx<ORDER.length-1?`<button class="btn primary" id="next">Próximo bloco</button>`:`<button class="btn primary" id="finish">Concluir e ver dossiê</button>`}</div>
+    </div></article>`;
+  updateComputed();
+  const nav=d=>{ save(false); curBlock=ORDER[idx+d]; renderBlock(); renderRail(); $("#blk").scrollIntoView({block:"start",behavior:"smooth"}); };
+  $("#prev").onclick=()=>nav(-1);
+  if($("#next")) $("#next").onclick=()=>nav(1);
+  if($("#finish")) $("#finish").onclick=async()=>{ await save(true); if(current.id){ dossieId=current.id; go("dossie"); } };
+  $("#saveBtn").onclick=()=>save(true);
+  if($("#addDebt")) $("#addDebt").onclick=()=>{ a.dividas=(a.dividas||[]).concat([{}]); renderBlock(); };
+  el.querySelectorAll("[data-rm]").forEach(x=>x.onclick=()=>{ a.dividas.splice(+x.dataset.rm,1); renderBlock(); renderRail(); scheduleSave(); });
+}
+/* Delegação de eventos do formulário */
+document.addEventListener("click",e=>{
+  const c=e.target.closest(".chip[data-f]"); if(!c||view!=="diag") return;
+  const id=c.dataset.f, v=c.dataset.v, a=current.answers;
+  const f=BLOCKS.flatMap(b=>b.fields).find(x=>x.id===id);
+  if(f.type==="multi"){ const s=new Set(a[id]||[]); s.has(v)?s.delete(v):s.add(v); a[id]=[...s]; }
+  else if(f.type==="scale"){ a[id]= a[id]===Number(v)?null:Number(v); }
+  else { a[id]= a[id]===v?null:v; }
+  const y=window.scrollY; renderBlock(); renderRail(); window.scrollTo({top:y}); scheduleSave();
+});
+document.addEventListener("input",e=>{
+  if(view!=="diag") return;
+  const t=e.target, a=current.answers;
+  if(t.dataset.t){ a[t.dataset.t]=t.value; if(t.dataset.t==="nome") renderRailSoon(); }
+  else if(t.dataset.m){ a[t.dataset.m]=parseMoney(t.value); updateComputed(); }
+  else if(t.dataset.d!==undefined){ const d=a.dividas[+t.dataset.d]; const k=t.dataset.k; d[k]= (k==="saldo"||k==="parcela")?parseMoney(t.value):t.value; }
+  else if(t.dataset.g!==undefined){ a.objetivos=a.objetivos||[{},{},{}]; a.objetivos[+t.dataset.g]=a.objetivos[+t.dataset.g]||{}; a.objetivos[+t.dataset.g][t.dataset.k]=t.value; }
+  else return;
+  scheduleSave();
+});
+document.addEventListener("focusout",e=>{
+  const t=e.target; if(view!=="diag") return;
+  if(t.dataset.m){ t.value=moneyInputVal(current.answers[t.dataset.m]); renderRail(); }
+  else if(t.dataset.d!==undefined && (t.dataset.k==="saldo"||t.dataset.k==="parcela")){ t.value=moneyInputVal(current.answers.dividas[+t.dataset.d][t.dataset.k]); }
+  else if(t.dataset.t||t.dataset.g!==undefined) renderRail();
+});
+let railT=null; function renderRailSoon(){ clearTimeout(railT); railT=setTimeout(renderRail,600); }
+function updateComputed(){
+  const el=$("#computed"); if(!el) return;
+  const c=calc(current.answers);
+  el.innerHTML=`<div><small>Patrimônio líquido</small><strong>${brl(c.pl)}</strong></div>
+   <div><small>Taxa de aporte</small><strong>${pct(c.poup)}</strong></div>
+   <div><small>Custo de vida / renda</small><strong>${pct(c.comp)}</strong></div>
+   <div><small>Reserva (meses de custo)</small><strong>${c.reserva==null?"—":c.reserva.toFixed(1).replace(".",",")}</strong></div>`;
+}
+
+/* =========================================================
+   PAINEL DA TURMA
+   ========================================================= */
+function countMulti(list,key,single){
+  const m={}; list.forEach(r=>{ const v=r.answers[key]; (single?(v?[v]:[]):(v||[])).forEach(x=>m[x]=(m[x]||0)+1); });
+  return Object.entries(m).sort((a,b)=>b[1]-a[1]);
+}
+function turmaInsights(L){
+  const n=L.length, out=[]; if(!n) return out;
+  const cs=L.map(r=>calc(r.answers)), A=L.map(r=>r.answers);
+  const share=f=>cs.filter((c,i)=>f(c,A[i])).length/n;
+  const push=(p,titulo,det,pilar)=>{ if(p>0) out.push({p,titulo,det,pilar}); };
+  push(share(c=>c.fase==="Reorganizar"),"Reorganização de dívidas e fluxo de caixa","Mentorados que usam crédito para fechar o mês, fizeram dívida para pagar dívida ou comprometem mais de 30% da renda com parcelas. Tema de base antes de investimentos.","Planejamento");
+  push(share(c=>c.reserva!=null&&c.reserva<6),"Reserva de emergência","Têm menos de 6 meses do custo de vida em dinheiro disponível.","Mapa da prosperidade financeira");
+  push(share((c,a)=>a.explica==="Não"||a.explica==="Em parte"||a.entende==="Não"),"Entender a própria carteira","Não conseguem explicar a função de cada investimento. Conteúdo prático: para que serve cada classe de ativo.","Investimentos");
+  push(share(c=>c.poup!=null&&c.poup<0.1),"Taxa de aporte abaixo de 10%","Guardam menos de 10% da renda por mês.","Planejamento");
+  const dims=Object.keys(cs[0].beh);
+  const med=dims.map(d=>{const v=cs.map(c=>c.beh[d]).filter(x=>x!=null);return [d,v.length?v.reduce((s,x)=>s+x,0)/v.length:null,v.filter(x=>x<=2).length/n];}).filter(x=>x[1]!=null).sort((a,b)=>a[1]-b[1]);
+  if(med.length) push(med[0][2],"Hábito mais fraco: "+med[0][0].toLowerCase(),"Média da turma "+med[0][1].toFixed(1).replace(".",",")+" de 5. Conteúdo de comportamento focado nesse ponto.","Hábitos e comportamentos de riqueza");
+  push(share((c,a)=>a.potencial==="Alto"||(a.impede||[]).some(x=>["Poucos clientes / vendas","Preço baixo","Falta de estratégia"].includes(x))),"Aumentar renda com vendas e precificação","Veem potencial alto de renda ou travam em clientes, preço ou estratégia. Reforça a entrega de Técnicas de Vendas.","Vendas");
+  push(share((c,a)=>a.quem_decide==="Gerente do banco"||a.quem_decide==="Ninguém, fica parado"||a.parado==="Sim"),"Dinheiro sem dono","Decisão de investimento terceirizada ao gerente ou dinheiro parado sem destino.","Investimentos");
+  push(share((c,a)=>!(a.objetivos||[]).some(o=>o&&o.oque)||!a.prioridade),"Clareza do estado desejado","Ainda sem objetivos com o quê, quanto e quando, ou sem prioridade definida.","Definição de estado desejado");
+  push(share(c=>c.aporteNec!=null&&c.aporteNec>0&&c.poup!=null&&c.aporteNec>(c.renda*c.poup)),"Distância entre visão e ritmo","O aporte atual não leva ao patrimônio desejado em 5 anos. Conteúdo de visão de 5 anos para 1 ano.","Visão de 5 anos para 1 ano");
+  return out.sort((a,b)=>b.p-a.p);
+}
+function palette(){ return [cssVar("--accent"),cssVar("--gold"),cssVar("--warn"),"#4E8C6A","#C9A13B","#7FA88C","#8A6A1A","#B9CDBF","#5B7B66","#D9B55A"]; }
+function mkChart(id,cfg){
+  if(charts[id]) charts[id].destroy();
+  const el=document.getElementById(id); if(!el||!window.Chart) return;
+  Chart.defaults.color=cssVar("--ink-2"); Chart.defaults.font.family=cssVar("--body"); Chart.defaults.borderColor=cssVar("--line");
+  charts[id]=new Chart(el,cfg);
+}
+const hbar=(labels,data,color)=>({type:"bar",data:{labels,datasets:[{data,backgroundColor:color||cssVar("--accent"),borderRadius:6,maxBarThickness:26}]},options:{indexAxis:"y",maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{precision:0},grid:{color:cssVar("--line")}},y:{grid:{display:false}}}}});
+
+function renderPainel(){
+  const v=$("#view-painel"), L=allRecords(), n=L.length;
+  const demoToggle=`<button class="btn ghost" id="demoBtn">${demo?"Sair do modo demonstração":"Ver com dados de demonstração"}</button>`;
+  if(!n){
+    v.innerHTML=`<div class="empty"><h2 class="display">Nenhum diagnóstico ainda</h2>
+      <p>Quando os treinadores aplicarem o onboarding, este painel mostra onde a turma está e quais conteúdos priorizar.</p>
+      <div class="row" style="justify-content:center"><button class="btn primary" id="startBtn">Aplicar o primeiro diagnóstico</button>${demoToggle}</div></div>`;
+    $("#startBtn").onclick=()=>{current={id:null,answers:{}};curBlock="b1";go("diag");};
+    $("#demoBtn").onclick=()=>{demo=!demo;renderPainel();};
+    return;
+  }
+  const cs=L.map(r=>calc(r.answers)), A=L.map(r=>r.answers);
+  const sat=A.map(a=>a.satisfacao).filter(x=>typeof x==="number");
+  const avg=arr=>arr.length?arr.reduce((s,x)=>s+x,0)/arr.length:null;
+  const poupM=avg(cs.map(c=>c.poup).filter(x=>x!=null));
+  const credito=cs.filter(c=>c.usaCredito).length;
+  const fases=["Reorganizar","Proteger","Multiplicar"].map(f=>cs.filter(c=>c.fase===f).length);
+  const ins=turmaInsights(L);
+  v.innerHTML=`
+   ${demo?`<p class="notice">Dados de demonstração, gerados só para visualizar o painel. Nada disso está salvo.</p>`:""}
+   <div class="row" style="justify-content:space-between;align-items:end">
+     <div><h2 class="display">Onde a turma está</h2><p class="lead">${n} mentorado${n>1?"s":""} diagnosticado${n>1?"s":""}. As prioridades abaixo mostram o que mais aparece e para qual pilar do programa leva.</p></div>
+     <div class="row">${demoToggle}</div></div>
+   <div class="kpis">
+     <div class="kpi"><small>Satisfação financeira média</small><strong>${sat.length?avg(sat).toFixed(1).replace(".",","):"—"}<span class="muted" style="font-size:18px"> /10</span></strong></div>
+     <div class="kpi"><small>Precisam reorganizar antes de investir</small><strong>${fases[0]} de ${n}</strong></div>
+     <div class="kpi"><small>Usam crédito para fechar o mês</small><strong>${credito} de ${n}</strong></div>
+     <div class="kpi"><small>Taxa de aporte média</small><strong>${pct(poupM)}</strong></div>
+   </div>
+   <h3 class="display">O que trabalhar primeiro</h3>
+   <p class="muted" style="margin:4px 0 0;font-size:14px">Ordenado pela parcela da turma que tem cada necessidade.</p>
+   <ol class="prio">${ins.slice(0,6).map(i=>`<li><div><h4>${esc(i.titulo)}</h4><p>${esc(i.det)}</p><span class="pilar">Pilar: ${esc(i.pilar)}</span></div><div class="pct">${Math.round(i.p*100)}%<small>da turma</small></div></li>`).join("")}</ol>
+   <div class="charts">
+     <div class="card"><h4>Em que fase cada um está</h4><p class="read">${fases[0]>=fases[2]?"A maior parte ainda precisa arrumar a base antes de multiplicar.":"A turma já tem base: dá para avançar em investimentos e crescimento."}</p><div class="cv"><canvas id="cFase"></canvas></div></div>
+     <div class="card"><h4>Satisfação com a vida financeira</h4><p class="read">${sat.filter(x=>x<=5).length} de ${sat.length} deram nota 5 ou menos.</p><div class="cv"><canvas id="cSat"></canvas></div></div>
+     <div class="card"><h4>Comportamento financeiro da turma</h4><p class="read">Média de 1 a 5, quanto maior melhor. O ponto mais baixo é o tema de hábito a atacar.</p><div class="cv"><canvas id="cBeh"></canvas></div></div>
+     <div class="card"><h4>Maior preocupação declarada</h4><p class="read">Use a mais citada como gancho de abertura dos encontros.</p><div class="cv"><canvas id="cPre"></canvas></div></div>
+     <div class="card"><h4>O que impede de construir patrimônio</h4><p class="read">Causa apontada pelos próprios mentorados.</p><div class="cv"><canvas id="cBar"></canvas></div></div>
+     <div class="card"><h4>O que trava a renda</h4><p class="read">Indica quanto peso dar a vendas, precificação e estratégia.</p><div class="cv"><canvas id="cImp"></canvas></div></div>
+     <div class="card"><h4>Onde está o patrimônio da turma</h4><p class="read">Soma dos ativos declarados por classe.</p><div class="cv"><canvas id="cPat"></canvas></div></div>
+     <div class="card"><h4>Taxa de aporte por mentorado</h4><p class="read">Linha de referência em 10% da renda.</p><div class="cv"><canvas id="cPoup"></canvas></div></div>
+   </div>
+   <div class="ai" id="aiBox"></div>
+   <h3 class="display" style="margin-top:34px">Mentorados</h3>
+   <div class="card tablewrap" style="margin-top:12px"><table><thead><tr><th>Nome</th><th>Treinador</th><th>Fase</th><th>Satisfação</th><th>Patrimônio líquido</th><th>Aporte</th><th></th></tr></thead><tbody>
+     ${L.map((r,i)=>`<tr><td><b>${esc(r.nome||"Sem nome")}</b></td><td>${esc(r.answers.treinador||"—")}</td><td><span class="fase ${cs[i].fase}">${cs[i].fase}</span></td><td class="num">${r.answers.satisfacao??"—"}</td><td class="num">${brl(cs[i].pl)}</td><td class="num">${pct(cs[i].poup)}</td>
+     <td><div class="row"><button class="btn ghost" data-dos="${esc(r.id)}">Dossiê</button>${demo?"":`<button class="btn ghost" data-edit="${esc(r.id)}">Editar</button>${isAdmin?`<button class="btn ghost danger" data-del="${esc(r.id)}">Excluir</button>`:""}`}</div></td></tr>`).join("")}
+   </tbody></table></div>`;
+  $("#demoBtn").onclick=()=>{demo=!demo;renderPainel();};
+  v.querySelectorAll("[data-dos]").forEach(b=>b.onclick=()=>{dossieId=b.dataset.dos;go("dossie");});
+  v.querySelectorAll("[data-edit]").forEach(b=>b.onclick=()=>{const r=records.find(x=>x.id===b.dataset.edit);current={id:r.id,answers:JSON.parse(JSON.stringify(r.answers))};curBlock="b1";go("diag");});
+  v.querySelectorAll("[data-del]").forEach(b=>b.onclick=async()=>{
+    if(b.dataset.armed!=="1"){ b.dataset.armed="1"; b.textContent="Confirmar exclusão"; setTimeout(()=>{if(b.isConnected){b.dataset.armed="";b.textContent="Excluir";}},4000); return; }
+    const id=b.dataset.del;
+    const {error}=await sb.from("mentorados").delete().eq("id",id);
+    if(error) setStatus("Não foi possível excluir."); else loadRecords();
+  });
+  // Gráficos
+  const pal=palette();
+  mkChart("cFase",{type:"doughnut",data:{labels:["Reorganizar","Proteger","Multiplicar"],datasets:[{data:fases,backgroundColor:[cssVar("--warn"),cssVar("--gold"),cssVar("--ok")],borderColor:cssVar("--surface"),borderWidth:3}]},options:{maintainAspectRatio:false,cutout:"62%",plugins:{legend:{position:"bottom"}}}});
+  const hist=[...Array(11).keys()].map(i=>sat.filter(x=>x===i).length);
+  mkChart("cSat",{type:"bar",data:{labels:[...Array(11).keys()].map(String),datasets:[{data:hist,backgroundColor:hist.map((_,i)=>i<=4?cssVar("--warn"):i<=7?cssVar("--gold"):cssVar("--ok")),borderRadius:6}]},options:{maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{ticks:{precision:0}},x:{grid:{display:false}}}}});
+  const dims=Object.keys(cs[0].beh);
+  const bavg=dims.map(d=>{const vv=cs.map(c=>c.beh[d]).filter(x=>x!=null);return vv.length?+(vv.reduce((s,x)=>s+x,0)/vv.length).toFixed(2):0;});
+  mkChart("cBeh",{type:"radar",data:{labels:dims,datasets:[{data:bavg,backgroundColor:"rgba(201,161,59,.25)",borderColor:cssVar("--gold"),pointBackgroundColor:cssVar("--gold")}]},options:{maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{r:{min:0,max:5,ticks:{stepSize:1,backdropColor:"transparent"},grid:{color:cssVar("--line")},angleLines:{color:cssVar("--line")}}}}});
+  const pre=countMulti(L,"preocupacao",true); mkChart("cPre",hbar(pre.map(x=>x[0]),pre.map(x=>x[1]),cssVar("--gold")));
+  const bar=countMulti(L,"barreira"); mkChart("cBar",hbar(bar.map(x=>x[0]),bar.map(x=>x[1])));
+  const imp=countMulti(L,"impede"); mkChart("cImp",hbar(imp.map(x=>x[0]),imp.map(x=>x[1]),cssVar("--gold")));
+  const cls=[["at_caixa","Dinheiro disponível"],["at_invest","Investimentos"],["at_imoveis","Imóveis"],["at_empresas","Empresas"],["at_veiculos","Veículos"],["at_outros","Outros"]];
+  mkChart("cPat",{type:"doughnut",data:{labels:cls.map(x=>x[1]),datasets:[{data:cls.map(([k])=>A.reduce((s,a)=>s+num(a[k]),0)),backgroundColor:pal,borderColor:cssVar("--surface"),borderWidth:3}]},options:{maintainAspectRatio:false,cutout:"58%",plugins:{legend:{position:"bottom"},tooltip:{callbacks:{label:c=>c.label+": "+brlC(c.raw)}}}}});
+  const pp=L.map((r,i)=>[r.nome||"—",cs[i].poup]).filter(x=>x[1]!=null).sort((a,b)=>b[1]-a[1]);
+  mkChart("cPoup",{type:"bar",data:{labels:pp.map(x=>x[0]),datasets:[{type:"line",data:pp.map(()=>10),borderColor:cssVar("--warn"),borderDash:[5,4],pointRadius:0,borderWidth:1.5},{data:pp.map(x=>Math.round(x[1]*100)),backgroundColor:pp.map(x=>x[1]<0.1?cssVar("--warn"):cssVar("--accent")),borderRadius:6,maxBarThickness:30}]},options:{maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{filter:i=>i.datasetIndex===1,callbacks:{label:c=>c.raw+"% da renda"}}},scales:{y:{ticks:{callback:v=>v+"%"}},x:{grid:{display:false}}}}});
+  renderAI(L);
+}
+
+/* Leitura com IA das respostas abertas */
+let aiResult=null, aiBusy=false;
+function renderAI(L){
+  const box=$("#aiBox"); if(!box) return;
+  if(demo){ box.innerHTML=""; return; }
+  box.innerHTML=`<div class="row" style="justify-content:space-between;align-items:end"><div><h3 class="display">O que dizem as respostas abertas</h3>
+    <p class="muted" style="margin:4px 0 0;font-size:14px;max-width:70ch">A IA agrupa as falas dos mentorados (preocupações, barreiras, o que esperam) em temas e sugere conteúdos. Os nomes não são enviados.</p></div>
+    <button class="btn primary" id="aiBtn" ${aiBusy?"disabled":""}>${aiBusy?"Lendo respostas…":aiResult?"Ler de novo":"Gerar leitura com IA"}</button></div>
+    <div class="ai-out" id="aiOut">${aiResult?aiHTML(aiResult):""}</div>`;
+  $("#aiBtn").onclick=()=>runAI(L);
+}
+function aiHTML(r){
+  return (r.sintese?`<div class="theme" style="border-left-color:var(--accent)"><h5>Síntese da turma</h5><p>${esc(r.sintese)}</p></div>`:"")+
+   (r.temas||[]).map(t=>`<div class="theme"><h5>${esc(t.tema)} <span class="muted" style="font-weight:400">· ${esc(t.mencoes)} menção(ões)</span></h5><p>${esc(t.leitura)}</p><p><b>Conteúdo sugerido:</b> ${esc(t.conteudo)}</p></div>`).join("");
+}
+async function runAI(L){
+  aiBusy=true; renderAI(L);
+  const campos=["frase","preocupacao_det","motivo","valeu","para10","tres_anos","divida_preocupa","mais30","visao5","proporcionar","porque","habito","barreira_det","sucesso","espera"];
+  const dados=L.map((r,i)=>{const o={id:"M"+(i+1)};campos.forEach(k=>{if(r.answers[k])o[k]=String(r.answers[k]).slice(0,400);});return o;});
+  const {data,error}=await sb.functions.invoke("leitura-ia",{body:{dados}});
+  if(error||!data||data.error){
+    let msg="Não foi possível gerar a leitura agora.";
+    try{ const b=error&&error.context&&await error.context.json(); if(b&&b.error==="sem_chave") msg="A leitura com IA ainda não foi configurada (falta a chave da API no Supabase)."; }catch(_){}
+    aiResult={sintese:msg,temas:[]};
+  } else aiResult=data;
+  aiBusy=false; renderAI(L);
+}
+
+/* =========================================================
+   DOSSIÊ DO MENTORADO
+   ========================================================= */
+function renderDossie(){
+  const v=$("#view-dossie"), L=allRecords();
+  if(!L.length){ v.innerHTML=`<div class="empty"><h2 class="display">Sem dossiês ainda</h2><p>O dossiê aparece assim que o primeiro diagnóstico for salvo.</p><button class="btn primary" id="st">Aplicar diagnóstico</button></div>`; $("#st").onclick=()=>go("diag"); return; }
+  if(!dossieId||!L.find(r=>r.id===dossieId)) dossieId=L[0].id;
+  const r=L.find(x=>x.id===dossieId), a=r.answers, c=calc(a), nd=needs(a,c);
+  const nome=(a.nome||"Mentorado").split(" ")[0];
+  const cs=L.map(x=>calc(x.answers));
+  const G=(a.objetivos||[]).filter(o=>o&&o.oque);
+  const pri = a.prioridade ? (a.objetivos||[])[+a.prioridade.slice(-1)-1] : null;
+  v.innerHTML=`
+   ${demo?`<p class="notice">Dados de demonstração.</p>`:""}
+   <div class="dossie-top">
+     <p class="quote">Eu já conheço o seu ponto A. <span>Agora vamos construir juntos o seu ponto B.</span></p>
+     <div class="picker" style="min-width:240px;margin:0"><label for="dpick">Mentorado</label><select id="dpick">${L.map(x=>`<option value="${esc(x.id)}" ${x.id===dossieId?"selected":""}>${esc(x.nome||"Sem nome")}</option>`).join("")}</select></div>
+   </div>
+   <div class="row" style="gap:8px"><span class="fase ${c.fase}">Fase: ${c.fase}</span><span class="muted" style="font-size:14px">${esc(a.treinador?"Treinador: "+a.treinador:"")}${a.data?" · Sessão em "+esc(a.data):""}</span></div>
+   <div class="route">
+     <div class="point"><h3 class="display">Ponto A · hoje</h3><dl>
+       <dt>Renda líquida mensal</dt><dd>${brl(c.renda)}</dd>
+       <dt>Custo de vida</dt><dd>${brl(c.custo)}</dd>
+       <dt>Aporte mensal</dt><dd>${brl(a.aporte)} <span class="muted">(${pct(c.poup)})</span></dd>
+       <dt>Ativos</dt><dd>${brl(c.ativos)}</dd>
+       <dt>Dívidas</dt><dd>${brl(c.dividas)}</dd>
+       <dt>Patrimônio líquido</dt><dd>${brl(c.pl)}</dd>
+       <dt>Reserva</dt><dd>${c.reserva==null?"—":c.reserva.toFixed(1).replace(".",",")+" meses"}</dd>
+       <dt>Satisfação</dt><dd>${a.satisfacao??"—"}/10</dd></dl></div>
+     <div class="bridge"><svg viewBox="0 0 70 120" aria-hidden="true"><path d="M8 110 C 8 60, 62 60, 62 10" fill="none" stroke="var(--gold)" stroke-width="3" stroke-dasharray="6 6"/><path d="M52 14 L62 6 L66 18" fill="none" stroke="var(--gold)" stroke-width="3" stroke-linecap="round"/></svg>
+       <div><strong>${c.gap!=null&&c.gap>0?brlC(c.gap):"—"}</strong>distância</div></div>
+     <div class="point"><h3 class="display">Ponto B · em 5 anos</h3><dl>
+       <dt>Patrimônio desejado</dt><dd>${brl(a.pat_desejado)}</dd>
+       <dt>Renda passiva desejada</dt><dd>${brl(a.renda_passiva)}</dd>
+       <dt>Para financiar a vida desejada</dt><dd>${brl(a.quanto_vida)}</dd>
+       <dt>Aporte necessário (sem rendimento)</dt><dd>${c.aporteNec?brl(c.aporteNec)+"/mês":"—"}</dd>
+       ${G.map((o,i)=>`<dt>Objetivo ${i+1}${pri===o?" ★":""}</dt><dd style="font-weight:600">${esc(o.oque)}${o.quanto?" · "+esc(o.quanto):""}${o.quando?" · "+esc(o.quando):""}</dd>`).join("")}
+     </dl></div>
+   </div>
+   <h3 class="display">O que ${esc(nome)} precisa</h3>
+   <ul class="needs">${nd.length?nd.map(x=>`<li class="${x.alta?"alta":""}"><div><b>${esc(x.titulo)}</b><span>${esc(x.texto)}</span><br><span class="pilar">Pilar: ${esc(x.pilar)}</span></div></li>`).join(""):`<li><div><b>Sem alertas pelos números</b><span>Complete o raio-x e o comportamento para gerar a leitura.</span></div></li>`}</ul>
+   <div class="charts">
+     <div class="card"><h4>Para onde vai o dinheiro</h4><p class="read">Gastos mensais declarados por categoria.</p><div class="cv"><canvas id="dGas"></canvas></div></div>
+     <div class="card"><h4>Comportamento: ${esc(nome)} x turma</h4><p class="read">De 1 a 5, quanto maior melhor.</p><div class="cv"><canvas id="dBeh"></canvas></div></div>
+   </div>
+   <h3 class="display" style="margin-top:30px">Nas palavras de ${esc(nome)}</h3>
+   <div class="voice">
+     ${[["Vida financeira em uma frase",a.frase],["Maior preocupação",[a.preocupacao,a.preocupacao_det].filter(Boolean).join(": ")],["O que impede o patrimônio",[(a.barreira||[]).join(", "),a.barreira_det].filter(Boolean).join(". ")],["Se nada mudar em 3 anos",a.tres_anos],["Por que o objetivo importa",a.porque],["Mentoria bem-sucedida significa",a.sucesso]].filter(x=>x[1]).map(([t,s])=>`<div><small>${t}</small><p>${esc(s)}</p></div>`).join("")||`<div><p class="muted">Respostas abertas ainda não preenchidas.</p></div>`}
+   </div>`;
+  $("#dpick").onchange=e=>{dossieId=e.target.value;renderDossie();};
+  const gl=[["g_moradia","Moradia"],["g_alimentacao","Alimentação"],["g_educacao","Educação"],["g_saude","Saúde"],["g_transporte","Transporte"],["g_lazer","Lazer"],["g_viagens","Viagens"],["g_familia","Família"],["g_outros","Outros"]].filter(([k])=>num(a[k])>0);
+  mkChart("dGas",{type:"doughnut",data:{labels:gl.map(x=>x[1]),datasets:[{data:gl.map(([k])=>a[k]),backgroundColor:palette(),borderColor:cssVar("--surface"),borderWidth:3}]},options:{maintainAspectRatio:false,cutout:"58%",plugins:{legend:{position:"bottom"},tooltip:{callbacks:{label:x=>x.label+": "+brl(x.raw)}}}}});
+  const dims=Object.keys(c.beh);
+  const tAvg=dims.map(d=>{const vv=cs.map(x=>x.beh[d]).filter(x=>x!=null);return vv.length?+(vv.reduce((s,x)=>s+x,0)/vv.length).toFixed(2):0;});
+  mkChart("dBeh",{type:"radar",data:{labels:dims,datasets:[{label:nome,data:dims.map(d=>c.beh[d]||0),backgroundColor:"rgba(201,161,59,.28)",borderColor:cssVar("--gold"),pointBackgroundColor:cssVar("--gold")},{label:"Turma",data:tAvg,backgroundColor:"transparent",borderColor:cssVar("--accent"),borderDash:[5,4],pointRadius:0}]},options:{maintainAspectRatio:false,plugins:{legend:{position:"bottom"}},scales:{r:{min:0,max:5,ticks:{stepSize:1,backdropColor:"transparent"},grid:{color:cssVar("--line")},angleLines:{color:cssVar("--line")}}}}});
+}
+
+/* =========================================================
+   Dados de demonstração (só em memória, nunca salvos)
+   ========================================================= */
+let _demo=null;
+function demoData(){
+  if(_demo) return _demo;
+  let s=7; const rnd=()=>{s=(s*9301+49297)%233280;return s/233280;}; const pick=a=>a[Math.floor(rnd()*a.length)];
+  const some=(a,k)=>a.filter(()=>rnd()<k);
+  const nomes=["Ana Souza","Bruno Lima","Carla Menezes","Diego Rocha","Elisa Prado","Fábio Nunes","Gabriela Reis","Hugo Matos","Íris Campos","João Teles","Karina Dias","Leonardo Brito"];
+  const trein=["Valter Vieira","Rennan Ochsendorf","Volney Fernandes"];
+  _demo=nomes.map((nome,i)=>{
+    const renda=Math.round((8000+rnd()*32000)/500)*500, custo=Math.round(renda*(0.7+rnd()*0.4)/100)*100;
+    const aporte=Math.max(0,Math.round((renda-custo)*rnd()/100)*100);
+    const a={nome,treinador:pick(trein),renda,renda_3m:renda,renda_melhor:Math.round(renda*(1.1+rnd()*0.8)),renda_pior:Math.round(renda*(0.4+rnd()*0.5)),custo_vida:custo,aporte,
+      g_moradia:custo*.3,g_alimentacao:custo*.18,g_educacao:custo*.12,g_saude:custo*.08,g_transporte:custo*.1,g_lazer:custo*.08,g_viagens:custo*.06,g_familia:custo*.05,g_outros:custo*.03,
+      at_caixa:Math.round(custo*rnd()*9),at_invest:Math.round(rnd()*400000),at_imoveis:rnd()<.6?Math.round(300000+rnd()*900000):0,at_empresas:rnd()<.3?Math.round(rnd()*500000):0,at_veiculos:Math.round(40000+rnd()*120000),
+      dividas_total:rnd()<.65?Math.round(rnd()*250000):0,satisfacao:Math.floor(2+rnd()*7),
+      preocupacao:pick(["Dívidas","Não sobra dinheiro","Falta de controle","Não sei investir","Não sei investir","Aposentadoria e futuro","Renda instável"]),
+      credito_mes:pick(["Nunca","Nunca","Às vezes","Todo mês"]),divida_p_divida:rnd()<.3?"Sim":"Não",
+      explica:pick(["Sim","Em parte","Não","Não"]),entende:pick(["Sim","Em parte","Não"]),quem_decide:pick(["Eu mesmo","Gerente do banco","Assessor / consultor","Ninguém, fica parado"]),parado:rnd()<.4?"Sim":"Não",
+      potencial:pick(["Baixo","Médio","Alto","Alto"]),atuacao:pick(["Empresário","Empresário","Profissional liberal","Empregado"]),
+      impede:some(["Falta de tempo","Poucos clientes / vendas","Preço baixo","Falta de qualificação","Medo / insegurança","Falta de estratégia"],.35),
+      planeja:pick(FREQ),acompanha:pick(FREQ.slice(0,3)),sabe_custo:pick(FREQ),impulso:pick(FREQ.slice(1)),adia:pick(FREQ.slice(1)),
+      barreira:some(["Falta de conhecimento","Falta de disciplina","Medo de arriscar","Renda insuficiente","Falta de tempo","Crenças sobre dinheiro","Dívidas"],.3),
+      pat_desejado:Math.round((1+rnd()*4)*1000000/50000)*50000,renda_passiva:Math.round(renda*(0.6+rnd())/1000)*1000,
+      objetivos:rnd()<.7?[{oque:"Quitar dívidas",quanto:"R$ 80 mil",quando:"12 meses"},{oque:"Reserva de emergência",quanto:"6 meses",quando:"18 meses"},{oque:"Imóvel para renda",quanto:"R$ 600 mil",quando:"5 anos"}]:[],
+      prioridade:rnd()<.7?"Objetivo 1":null,
+      frase:"(resposta de demonstração)",sucesso:"(resposta de demonstração)"};
+    return {id:"demo"+i,nome,answers:a};
+  });
+  return _demo;
+}
+
+/* Início */
+/* Equipe (só admin) */
+async function renderEquipe(){
+  const v=$("#view-equipe");
+  if(!isAdmin){ v.innerHTML=""; return; }
+  const {data}=await sb.from("equipe").select("*").order("criado_em");
+  equipe=data||[];
+  v.innerHTML=`<h2 class="display">Equipe com acesso</h2>
+   <p class="lead">Só quem está nesta lista consegue entrar e ver os diagnósticos. Treinadores aplicam e editam; administradores também excluem e gerenciam a equipe.</p>
+   <form class="team-form" id="teamForm"><div><label for="tEmail">E-mail</label><input id="tEmail" type="email" required></div>
+   <div><label for="tNome">Nome</label><input id="tNome" type="text"></div>
+   <div><label for="tPapel">Papel</label><select id="tPapel"><option value="treinador">Treinador</option><option value="admin">Administrador</option></select></div>
+   <button class="btn primary" type="submit">Liberar acesso</button></form>
+   <div class="card tablewrap"><table><thead><tr><th>E-mail</th><th>Nome</th><th>Papel</th><th></th></tr></thead><tbody>
+   ${equipe.map(p=>`<tr><td>${esc(p.email)}</td><td>${esc(p.nome||"—")}</td><td>${p.papel==="admin"?"Administrador":"Treinador"}</td><td>${p.email===me.email?"<span class='muted'>você</span>":`<button class="btn ghost danger" data-rmteam="${esc(p.email)}">Remover acesso</button>`}</td></tr>`).join("")}
+   </tbody></table></div>`;
+  $("#teamForm").onsubmit=async e=>{
+    e.preventDefault();
+    const row={email:$("#tEmail").value.trim().toLowerCase(),nome:$("#tNome").value.trim()||null,papel:$("#tPapel").value};
+    const {error}=await sb.from("equipe").upsert(row);
+    setStatus(error?"Não foi possível liberar esse e-mail.":"Acesso liberado para "+row.email+".");
+    renderEquipe();
+  };
+  v.querySelectorAll("[data-rmteam]").forEach(b=>b.onclick=async()=>{
+    if(b.dataset.armed!=="1"){ b.dataset.armed="1"; b.textContent="Confirmar remoção"; return; }
+    await sb.from("equipe").delete().eq("email",b.dataset.rmteam); renderEquipe();
+  });
+}
+
+</script>
+</body>
+</html>
